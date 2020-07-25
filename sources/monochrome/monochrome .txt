@@ -1,0 +1,69 @@
+#ifndef F_CPU
+#define F_CPU 8000000UL
+#endif
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+//======================================Initialize 74HC595======================================//
+
+#define HC595_PORT   PORTB
+#define HC595_DDR    DDRB
+#define HC595_DS_POS PB0		 //Data pin (DS) pin location
+#define HC595_SH_CP_POS PB2      //Shift Clock (SH_CP) pin location
+#define HC595_ST_CP_POS PB1      //Store Clock (ST_CP) pin location
+
+void HC595Init(){HC595_DDR|=((1<<HC595_SH_CP_POS)|(1<<HC595_ST_CP_POS)|(1<<HC595_DS_POS));}
+
+#define HC595DataHigh() (HC595_PORT|=(1<<HC595_DS_POS))
+#define HC595DataLow() (HC595_PORT&=(~(1<<HC595_DS_POS)))
+
+void HC595Pulse(){
+	HC595_PORT|=(1<<HC595_SH_CP_POS);
+	HC595_PORT&=(~(1<<HC595_SH_CP_POS));
+}
+
+void HC595Latch(){
+	HC595_PORT|=(1<<HC595_ST_CP_POS);
+	_delay_loop_1(1);
+	HC595_PORT&=(~(1<<HC595_ST_CP_POS));
+	_delay_loop_1(1);
+}
+
+void HC595Write(long int data){
+	for(int i=0;i<24;i++){
+		if(data & 0b100000000000000000000000){
+			HC595DataLow();
+			}else{
+			HC595DataHigh();
+		}
+		HC595Pulse();
+		data=data<<1;
+	}
+	HC595Latch();
+}
+
+//======================================Initialize 74HC595======================================//
+
+int main(){
+	HC595Init();
+	long int imagee = 0b000000000000000000000000;
+					    
+	long int image[3]={	0b111111110000000000000000,
+			0b000000001111111110000000,
+			0b000000000000000001111111};
+
+
+	while(1){
+		//for (int j=0;j<10;j++){
+			for (int k=0;k<200;k++){
+				for(int i=0;i<3;i++){
+					HC595Write(image[i]);
+					_delay_us(100);
+					HC595Write(imagee);
+					_delay_us(100);
+				}
+			}
+		//}
+	}
+}

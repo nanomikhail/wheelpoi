@@ -1,0 +1,146 @@
+#ifndef F_CPU
+#define F_CPU 8000000UL
+#endif
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+//======================================Initialize 74HC595======================================//
+
+#define DS_POS PB0		 //Data pin (DS) pin location
+#define SHCP_POS PB2      //Shift Clock (SH_CP) pin location
+#define STCP_POS PB1      //Store Clock (ST_CP) pin location
+
+void HC595Init(){DDRB|=((1<<SHCP_POS)|(1<<STCP_POS)|(1<<DS_POS));}
+
+#define HC595DataHigh() (PORTB|=(1<<DS_POS))
+#define HC595DataLow() (PORTB&=(~(1<<DS_POS)))
+
+void HC595Pulse(){
+	PORTB|=(1<<SHCP_POS);
+	PORTB&=(~(1<<SHCP_POS));
+}
+
+void HC595Latch(){
+	PORTB|=(1<<STCP_POS);
+	_delay_loop_1(1);
+	PORTB&=(~(1<<STCP_POS));
+	_delay_loop_1(1);
+}
+
+void HC595Write(long int data){
+	for(int i=0;i<24;i++){
+		if(data & 0b100000000000000000000000){
+			HC595DataHigh();
+			}else{
+			HC595DataLow();
+		}
+		HC595Pulse();
+		data=data<<1;
+	}
+	HC595Latch();
+}
+
+//======================================Initialize 74HC595======================================//
+
+int main(){
+
+	long int image_r =	0b000000000000000000000110;
+	long int image_g =  0b000000000000000000000101;
+	long int image_b =  0b000000000000000000000011;
+
+	int nimg=0;       //current image
+	int n=3;          //number of images
+	int length=21;    //length of image
+
+	
+	const char *img[]={ "wwwwwwwwwwwwwwwwwwwww",
+						"wwwwwwwwwwwwwwwwwwwww",
+						"wwwwwwwwwwwwwwwwwwwww",
+						"wwwwwwww000000wwwwwww",
+						"wwwww0000wwrr00wwwwww",
+						"wwww00wwwwwrr0000wwww",
+						"www00rrwwwrr00ww00www",
+						"www0wwrrrrrr0wwww0www",
+						"ww00wwrrwwwr0wwww0www",
+						"ww0wwrrwwwww000ww0www",
+						"ww0rrrrwwwww0wwww0www",
+						"ww0rrrrwwwww0wwww0www",
+						"ww0wwrrwwwww000ww0www",
+						"ww00wwrrwwwr0wwww0www",
+						"www0wwrrrrrr0wwww0www",
+						"www00rrwwwrr00ww00www",
+						"wwww00wwwwwrr0000wwww",
+						"wwwww0000wwrr00wwwwww",
+						"wwwwwwwww00000wwwwwww",
+						"wwwwwwwwwwwwwwwwwwwww",
+						"wwwwwwwwwwwwwwwwwwwww",
+
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000rrrrr0000",
+						"0000000000rrrrrrrr000",
+						"00000000rrrrrryyyrr00",
+						"0000000rrryyyywyyyrr0",
+						"000000rrryyyyyywwwyr0",
+						"00000rrryrrrywwwwwyr0",
+						"00000rrrrrrrrywwwwyr0",
+						"0000rr0rrrrryyyywyrr0",
+						"000000000rryyrryyrr00",
+						"000000r0rrrrrrrrrrr00",
+						"0r00000rrrrrrrrrrr000",
+						"000000rrr00rrrrr00000",
+						"000000000000000000000",
+
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"000000000000000000000",
+						"00000000000000gg00000",
+						"0000000000000gggg0000",
+						"00000000g000gg000g000",
+						"0000000g0000g0000g000",
+						"0000000g0000g0000g000",
+						"0000000g000g00000g000",
+						"00000ggggggggggggg000",
+						"0000000g000g00000ggg0",
+						"0000000gg0gg00000g000",
+						"00000000g0g000000g000",
+						"00000000ggg00000g0000",
+						"00000000000000ggg0000",
+						"000000000000000000000",
+						"000000000000000000000",
+					    "000000000000000000000"};
+
+
+	HC595Init();
+	while(1){
+		for (int k=0;k<150;k++){
+			for(int j=nimg*length;j<(21+nimg*length);j++){
+				
+				for(int i=0;i<21;i++){
+					if(img[j][i]=='r' || img[j][i]=='m' || img[j][i]=='y' || img[j][i]=='w'){image_r=image_r|(0b100000000000000000000000>>i);}
+					if(img[j][i]=='g' || img[j][i]=='c' || img[j][i]=='y' || img[j][i]=='w'){image_g=image_g|(0b100000000000000000000000>>i);}
+					if(img[j][i]=='b' || img[j][i]=='c' || img[j][i]=='m' || img[j][i]=='w'){image_b=image_b|(0b100000000000000000000000>>i);}
+				}
+
+				HC595Write(image_r);HC595Write(image_g);HC595Write(image_b);
+				HC595Write(0b000000000000000000000111);
+				image_r=0b000000000000000000000110;
+				image_g=0b000000000000000000000101;
+				image_b=0b000000000000000000000011;
+				_delay_us(600);
+				
+			}
+			}nimg++; if(nimg==n){nimg=0;}
+			
+		}//while
+	}

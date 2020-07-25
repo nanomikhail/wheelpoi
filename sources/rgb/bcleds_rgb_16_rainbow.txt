@@ -1,0 +1,120 @@
+#ifndef F_CPU
+#define F_CPU 8000000UL
+#endif
+
+#include <avr/io.h>
+#include <util/delay.h>
+
+//======================================Initialize 74HC595======================================//
+
+#define HC595_PORT   PORTB
+#define HC595_DDR    DDRB
+#define HC595_DS_POS PB0		 //Data pin (DS) pin location
+#define HC595_SH_CP_POS PB2      //Shift Clock (SH_CP) pin location 
+#define HC595_ST_CP_POS PB1      //Store Clock (ST_CP) pin location
+
+void HC595Init(){HC595_DDR|=((1<<HC595_SH_CP_POS)|(1<<HC595_ST_CP_POS)|(1<<HC595_DS_POS));}
+
+#define HC595DataHigh() (HC595_PORT|=(1<<HC595_DS_POS))
+#define HC595DataLow() (HC595_PORT&=(~(1<<HC595_DS_POS)))
+
+void HC595Pulse(){
+	HC595_PORT|=(1<<HC595_SH_CP_POS);
+	HC595_PORT&=(~(1<<HC595_SH_CP_POS));
+}
+
+void HC595Latch(){
+	HC595_PORT|=(1<<HC595_ST_CP_POS);
+	_delay_loop_1(1);
+	HC595_PORT&=(~(1<<HC595_ST_CP_POS));
+	_delay_loop_1(1);
+}
+
+void HC595Write(int data){
+for(int i=0;i<16;i++){
+	if(data & 0b10000000000000000){
+	HC595DataHigh();
+    }else{
+	HC595DataLow();
+    }
+    HC595Pulse();
+    data=data<<1;
+}
+HC595Latch();
+}
+
+//======================================Initialize 74HC595======================================//
+
+int main(){
+
+	long int image_r = 0b000000000000000110;
+	long int image_g = 0b000000000000000101;
+	long int image_b = 0b000000000000000011;
+
+	char *image1[]={   
+				"ggggggrrrrrrrbbbbbbbg0",
+				"ggggggrrrrrrrbbbbbbbg0",
+				"gggggrrrrrrrbbbbbbbgg0",
+				"gggggrrrrrrrbbbbbbbgg0",
+				"ggggrrrrrrrbbbbbbbggg0",
+				"ggggrrrrrrrbbbbbbbggg0",
+				"gggrrrrrrrbbbbbbbgggg0",
+				"gggrrrrrrrbbbbbbbgggg0",
+				"ggrrrrrrrbbbbbbbggggg0",
+				"ggrrrrrrrbbbbbbbggggg0",
+				"grrrrrrrbbbbbbbgggggg0",
+				"grrrrrrrbbbbbbbgggggg0",
+				"rrrrrrrbbbbbbbggggggg0",
+				"rrrrrrrbbbbbbbggggggg0"
+};
+
+	HC595Init();
+	int counter = 0;
+	while(1){
+
+		if (counter<3){counter++;}
+		if (counter==3){
+			counter=0;
+			for(int i=0;i<14;i++){
+				for (int j=20;j>0;j--){
+					image1[i][j]=image1[i][j-1];
+				}
+				image1[i][0]=image1[i][20];
+				image1[i][20]='0';
+			}
+		}
+
+		for(int j=0;j<14;j++){
+
+			for(int i=0;i<13;i++){
+				if(image1[j][i]=='r' || image1[j][i]=='m' || image1[j][i]=='y' || image1[j][i]=='w'){
+					image_r=image_r|(0b001000000000000000>>i);
+				}
+			}
+			for(int i=0;i<13;i++){
+				if(image1[j][i]=='g' || image1[j][i]=='c' || image1[j][i]=='y' || image1[j][i]=='w'){
+					image_g=image_g|(0b001000000000000000>>i);
+				}
+			}
+			for(int i=0;i<13;i++){
+				if(image1[j][i]=='b' || image1[j][i]=='c' || image1[j][i]=='m' || image1[j][i]=='w'){
+					image_b=image_b|(0b001000000000000000>>i);
+				}
+			}
+
+			HC595Write(image_r);
+			HC595Write(image_g);
+			HC595Write(image_b);
+
+			HC595Write(0b000000000000000111);
+
+			image_r=0b000000000000000110;
+			image_g=0b000000000000000101;
+			image_b=0b000000000000000011;
+
+			_delay_us(1);
+
+		}
+
+	}
+}
